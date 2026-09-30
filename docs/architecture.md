@@ -83,7 +83,8 @@ inherent to in-place SOPS encryption and documented in
 
 ## Audit trail
 
-JSONL, one record per operation: timestamp, operation, logical id,
+JSONL, one record per rotate, verify, reconcile or import, including
+attempts the registry policy refuses: timestamp, operation, logical id,
 caller uid/gid/pid, result, per-stage outcomes, duration in
 milliseconds. No values, no fingerprints (a boolean `changed` flag at
 most). Location is configured in `brokerd.toml`

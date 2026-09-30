@@ -434,6 +434,19 @@ fn finish(
             report.message = Some(format!("{} failed; see stages", report.operation));
         }
     }
+    audit(config, &report.operation, def, &peer, ok, &stages);
+    report
+}
+
+/// Append one audit record for an operation on `def`.
+fn audit(
+    config: &Config,
+    operation: &str,
+    def: &SecretDef,
+    peer: &Peer,
+    ok: bool,
+    stages: &[StageRecord],
+) {
     let audit_stages: Vec<(&str, &str, Option<&str>)> = stages
         .iter()
         .map(|s| {
@@ -452,7 +465,7 @@ fn finish(
         &config.file.audit_path,
         &AuditRecord {
             ts: now_iso(),
-            op: &report.operation,
+            op: operation,
             secret: &def.id,
             uid: peer.uid,
             gid: peer.gid,
@@ -462,7 +475,24 @@ fn finish(
             stages: &audit_stages,
         },
     );
-    report
+}
+
+/// Audit a request the registry policy refused before any stage ran, so
+/// attempts on `forbidden`/`manual` secrets are attributable.
+fn audit_policy_refusal(config: &Config, operation: &str, def: &SecretDef, peer: &Peer) {
+    let stage = StageRecord {
+        stage: "policy".into(),
+        result: StageResult::Failed,
+        detail: Some(policy_name(def.policy)),
+    };
+    audit(config, operation, def, peer, false, &[stage]);
+}
+
+fn policy_name(policy: Policy) -> String {
+    serde_json::to_string(&policy)
+        .unwrap_or_default()
+        .trim_matches('"')
+        .to_string()
 }
 
 pub(crate) fn dispatch_rotate(
@@ -480,14 +510,13 @@ pub(crate) fn dispatch_rotate(
         Err(e) => return fail("rotate", secret, e),
     };
     if def.policy != Policy::Auto {
+        audit_policy_refusal(config, "rotate", def, &peer);
         return fail(
             "rotate",
             secret,
             format!(
                 "policy is {}{} — {}",
-                serde_json::to_string(&def.policy)
-                    .unwrap_or_default()
-                    .trim_matches('"'),
+                policy_name(def.policy),
                 def.reason
                     .as_deref()
                     .map(|r| format!(" ({r})"))
@@ -516,16 +545,15 @@ pub(crate) fn dispatch_rotate(
 
 /// Validate that an import may proceed (policy is provider-assisted and
 /// the secret exists). On Ok the broker announces [`Response::ReadyForImport`].
-pub(crate) fn prepare_import(config: &Config, secret: &str, _peer: Peer) -> Result<(), String> {
+pub(crate) fn prepare_import(config: &Config, secret: &str, peer: Peer) -> Result<(), String> {
     let registry =
         Registry::load(&config.file.registry_path).map_err(|e| format!("registry: {e}"))?;
     let def = lookup(&registry, secret)?;
     if def.policy != Policy::ProviderAssisted {
+        audit_policy_refusal(config, "import-provider-secret", def, &peer);
         return Err(format!(
             "secret {secret} is not provider-assisted (policy {}); import refused",
-            serde_json::to_string(&def.policy)
-                .unwrap_or_default()
-                .trim_matches('"')
+            policy_name(def.policy)
         ));
     }
     Ok(())
@@ -757,10 +785,7 @@ pub(crate) fn dispatch_status(config: &Config, secret: &str, _peer: Peer) -> Ope
         Err(e) => return fail("status", secret, e),
     };
     let mut report = OperationReport::success("status", Some(secret));
-    let policy: String = serde_json::to_string(&def.policy)
-        .unwrap_or_default()
-        .trim_matches('"')
-        .to_string();
+    let policy = policy_name(def.policy);
     report.message = Some(format!(
         "policy={policy} consumers={} backends={} reload={} checks={} verify={}{}{}",
         def.consumers.len(),
@@ -789,13 +814,7 @@ pub(crate) fn dispatch_list(config: &Config, _peer: Peer) -> OperationReport {
     let ids: Vec<String> = registry
         .secrets()
         .values()
-        .map(|def| {
-            let policy = serde_json::to_string(&def.policy)
-                .unwrap_or_default()
-                .trim_matches('"')
-                .to_string();
-            format!("{} {}", def.id, policy)
-        })
+        .map(|def| format!("{} {}", def.id, policy_name(def.policy)))
         .collect();
     report.message = Some(ids.join("\n"));
     report

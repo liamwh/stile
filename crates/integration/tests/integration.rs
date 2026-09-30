@@ -681,6 +681,15 @@ fn forbidden_policy_is_refused_without_touching_the_store() {
         !sops_log.contains("encrypt"),
         "store was written: {sops_log}"
     );
+    // The refused attempt is attributable in the audit trail.
+    let audit = std::fs::read_to_string(fixture.root.join("logs/audit.log")).unwrap_or_default();
+    let record: Value = audit
+        .lines()
+        .filter_map(|l| serde_json::from_str::<Value>(l).ok())
+        .find(|r| r["op"] == "rotate" && r["secret"] == "test/forbidden-secret")
+        .expect("refused rotation must be audited");
+    assert_eq!(record["result"], "error");
+    assert_eq!(record["uid"], uid);
 }
 
 #[test]
@@ -1090,6 +1099,15 @@ fn import_requires_provider_assisted_policy() {
     assert!(
         response.contains("not provider-assisted"),
         "got: {response}"
+    );
+    let audit = std::fs::read_to_string(fixture.root.join("logs/audit.log")).unwrap_or_default();
+    assert!(
+        audit
+            .lines()
+            .any(|l| l.contains("\"import-provider-secret\"")
+                && l.contains("\"test/auto-secret\"")
+                && l.contains("\"error\"")),
+        "refused import must be audited: {audit}"
     );
 }
 

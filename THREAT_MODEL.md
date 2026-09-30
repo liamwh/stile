@@ -101,8 +101,10 @@ If any of these fail, the model has failed — see Non-goals.
 5. **Fail closed.** Interrupted rotations restore previous encrypted
    bytes; plaintext staging is refused at symlinked paths; unsafe socket
    directories abort startup; a live instance blocks a second broker.
-6. **Auditable without disclosure.** Every operation records uid, gid,
+6. **Auditable without disclosure.** Every rotate, verify, reconcile
+   and import, including attempts refused by policy, records uid, gid,
    pid, operation, per-stage outcomes and duration — never values.
+   Read-only `status` and `list` are not audited.
 
 ## Capability inventory (what an authorised caller can do)
 
