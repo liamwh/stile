@@ -5,8 +5,8 @@ responsibly.
 
 ## Supported versions
 
-| Version | Supported |
-|---|---|
+| Version                 | Supported        |
+| ----------------------- | ---------------- |
 | 0.1.x (initial release) | yes, best effort |
 
 This project is pre-1.0 and early-stage: fixes land on `main` and are
@@ -20,12 +20,7 @@ This project does not yet have a dedicated security email address.
 Until one exists, use **GitHub Private Vulnerability Reporting**:
 
 1. Go to the repository page on GitHub.
-2. *Security* tab → *Report a vulnerability*.
-
-(If the tab is not enabled, the maintainer must turn it on under
-*Settings → Code security and analysis → Private vulnerability
-reporting*. That is a one-time setup step listed in the release
-checklist.)
+2. _Security_ tab → _Report a vulnerability_.
 
 Reports received this way stay private to the maintainer and the
 GitHub Security Advisory workflow, and allow coordinated disclosure

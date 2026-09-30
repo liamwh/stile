@@ -38,6 +38,9 @@ git init -q -b main
 # Copy exactly the tracked files.
 git -C "$src" archive HEAD | tar -x -C "$dest"
 
+# Private-only material (see PRIVATE.md) never ships.
+rm -f "$dest/PRIVATE.md"
+
 name="${PUBLIC_NAME:-$(git -C "$src" config user.name)}"
 email="${PUBLIC_EMAIL:-$(git -C "$src" config user.email)}"
 GIT_AUTHOR_NAME="$name" GIT_AUTHOR_EMAIL="$email" \
