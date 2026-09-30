@@ -5,6 +5,9 @@ changes boring, auditable and minimal.
 
 ## Development
 
+If you use [just](https://github.com/casey/just), `just check` runs the
+full pre-push gate and `just --list` shows every task.
+
 ```console
 $ git clone https://github.com/liamwh/stile && cd stile
 $ cargo fmt
