@@ -11,7 +11,10 @@ yanked = "warn"
 [licenses]
 version = 2
 # Everything in the tree must be permissive and GPL-free (this is
-# Apache-2.0 infrastructure software expected to be vendored).
+# Apache-2.0 infrastructure software expected to be vendored). The
+# allow-list is policy, not an inventory: not every entry matches in
+# every feature resolution.
+unused-allowed-license = "allow"
 allow = [
   "MIT",
   "MIT-0",
@@ -21,7 +24,6 @@ allow = [
   "BSD-3-Clause",
   "ISC",
   "Unicode-3.0",
-  "Unicode-DFS-2016",
   "CDLA-Permissive-2.0",
 ]
 
