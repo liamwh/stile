@@ -5,7 +5,16 @@ Notable changes to `stile`. The format follows
 is semver-ish for a pre-1.0 project: breaking changes may land in minor
 versions.
 
-## [0.1.0] — unreleased
+## [Unreleased]
+
+- Rotations and provider imports refused by registry policy (for
+  example a `forbidden` data-encryption key) are now written to the
+  audit log, so the attempt is attributable.
+- Docs: the README `stile list` example shows the real JSON output, and
+  the protocol docs no longer claim response types cannot carry text;
+  they name the two free-text fields and how they are filled.
+
+## [0.1.0] — 2026-09-30
 
 Initial public release.
 

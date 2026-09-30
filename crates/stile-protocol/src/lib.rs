@@ -1,14 +1,16 @@
 //! Wire protocol between `stile` (unprivileged client) and
 //! `stile-brokerd` (privileged daemon).
 //!
-//! Design invariant, enforced by the shape of these types: **no request can
-//! ask for secret material and no response can carry it.** Requests name
-//! logical secrets and lifecycle operations only; responses carry
-//! non-sensitive structured status (booleans, counts, opaque `changed`
-//! flags). There is deliberately no `get`/`read`/`export`/`decrypt` variant
-//! and no free-form field a future endpoint could smuggle plaintext
-//! through. Extending this enum is a security review event: see
-//! `docs/threat-model.md`.
+//! Design invariant: **no request can ask for secret material and no
+//! response is meant to carry it.** Requests name logical secrets and
+//! lifecycle operations only; responses carry non-sensitive structured
+//! status (booleans, stage names, opaque `changed` flags). There is
+//! deliberately no `get`/`read`/`export`/`decrypt` variant. The only
+//! free-text fields are `OperationReport::message` and
+//! `StageRecord::detail`; the broker fills them from registry-declared
+//! identifiers, exit codes and fixed strings, and the integration suite
+//! checks them for sentinel values. Extending these types is a security
+//! review event: see `THREAT_MODEL.md`.
 //!
 //! Transport: newline-delimited JSON over a Unix domain socket
 //! (`/run/stile/sock` by default). One request line in, one

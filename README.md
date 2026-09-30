@@ -80,10 +80,14 @@ life, driven exclusively by a declarative, root-owned registry:
 | Reload | Run only registry-declared commands as declared users via `runuser` |
 | Verify | HTTP status probes; bearer probes attach credentials via a header file, never argv; optional old-credential revocation check |
 
-Every operation returns a structured JSON report — stage names,
-booleans, and identifiers. No field of any response can carry secret
-bytes; the protocol types make such a field impossible to add by
-accident (see `crates/stile-protocol`).
+Every operation returns a structured JSON report: stage names,
+booleans, identifiers and a short message. No request type asks for a
+value and no response field is meant to hold one. The report's two
+free-text fields (`message` and each stage's `detail`) carry only
+registry-declared identifiers, exit codes, fixed strings and parse
+errors about the caller's own request. The end-to-end suite checks
+responses, logs and argv for sentinel values on every run (see
+`crates/stile-protocol` and `crates/integration`).
 
 The unprivileged CLI (`stile`) has no code path that can receive or
 print a secret value. There is deliberately no `get`, `show`, `reveal`,
@@ -143,8 +147,21 @@ git-tracked repository.
 
 ```console
 $ stile list
-example-app/session-key auto
-example-app/provider-token provider-assisted
+{
+  "status": "success",
+  "operation": "list",
+  ...
+  "message": "example-app/db-password auto\nexample-app/email-encryption-key forbidden\nexample-app/inference-api-key auto\nexample-app/oauth-client-secret provider-assisted\nexample-app/session-key auto"
+}
+
+$ stile rotate example-app/email-encryption-key
+{
+  "status": "error",
+  "operation": "rotate",
+  "secret": "example-app/email-encryption-key",
+  ...
+  "message": "policy is forbidden (rotating would make stored email undecryptable; requires a migration) — rotation refused"
+}
 
 $ stile rotate example-app/session-key
 {
@@ -187,8 +204,10 @@ socket once; it is never in argv, environment, or a file.
 - The socket is `0660 root:stile-access`; its parent directory is
   verified owner-matched and not world-writable before the broker
   starts.
-- Every operation is audited (uid/gid/pid, operation, stages, duration)
-  without ever recording values.
+- Every rotate, verify, reconcile and import is audited (uid/gid/pid,
+  operation, stages, duration), including attempts the registry policy
+  refuses, without ever recording values. Read-only `status` and `list`
+  are not.
 - Subprocess stderr is never forwarded to the caller.
 
 These are enforced by construction where possible (type shapes, file
