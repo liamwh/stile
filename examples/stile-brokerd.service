@@ -1,0 +1,54 @@
+# stile-brokerd systemd unit — EXAMPLE.
+# The broker needs root to: chown deployed files to their declared
+# owners, run declared commands as declared users (runuser), and read
+# the root-owned age identity. Everything else is restricted below.
+#
+# ADAPT the ReadWritePaths to your registry's consumers and repo_root;
+# the paths here match examples/registry.toml with repo_root=/srv/infra.
+
+[Unit]
+Description=stile capability broker (stile-brokerd)
+Documentation=file:///usr/share/doc/stile/THREAT_MODEL.md
+After=network.target docker.service
+Wants=docker.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/stile-brokerd /etc/stile/brokerd.toml
+User=root
+Group=root
+RuntimeDirectory=stile
+RuntimeDirectoryMode=0750
+
+# The broker must be able to: write its state dirs; run sops against
+# the infra repo (canonical-path encryption); write deployed runtime
+# secret files; reach the docker socket (declared postgres hooks); exec
+# curl for verification probes. Everything else is read-only.
+#
+# NoNewPrivileges is deliberately NOT set: it withholds CAP_SETUID from
+# the permitted set and runuser's setuid(2) to the declared command
+# user then fails with EPERM. The broker must drop privileges for
+# declared reload commands; capability containment comes from
+# CapabilityBoundingSet (no CAP_SYS_ADMIN, no module loading).
+ProtectSystem=strict
+ReadWritePaths=/var/lib/stile /run/stile /srv/infra /etc/example-app /etc/inference-gateway
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectClock=yes
+ProtectHostname=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictRealtime=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+CapabilityBoundingSet=CAP_CHOWN CAP_DAC_OVERRIDE CAP_FOWNER CAP_SETUID CAP_SETGID
+SystemCallFilter=@system-service
+SystemCallArchitectures=native
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+[package]
+name = "stile-integration"
+description = "End-to-end tests: fake sops/curl/docker/runuser, throwaway sentinel secrets, non-disclosure assertions."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+serde = { workspace = true }
+libc = { workspace = true }
+stile-protocol = { path = "../stile-protocol" }
+stile-core = { path = "../stile-core" }
+serde_json = { workspace = true }
+
+[dev-dependencies]
+
+[[test]]
+name = "integration"
+path = "tests/integration.rs"
+
+[lints]
+workspace = true
