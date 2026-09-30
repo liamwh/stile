@@ -46,6 +46,15 @@ binaries:
 clean:
     rm -rf target
 
+# Install the prek git hooks (secret scan, fmt, clippy, lock check,
+# conventional-commit messages). Run once per clone.
+hooks:
+    prek install --hook-type pre-commit --hook-type commit-msg
+
+# Run every hook against the whole tree once (no commit made).
+hooks-run:
+    prek run --all-files
+
 # Produce a clean one-commit public snapshot from the committed tree.
 # PUBLIC_NAME/PUBLIC_EMAIL override the commit author.
 snapshot dest="../stile-public":

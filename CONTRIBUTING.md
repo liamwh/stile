@@ -76,8 +76,32 @@ Concretely, when adding an operation:
 5. **Fail closed.** Unrecoverable mid-operation state must restore
    previous state; ambiguous configuration must abort, not guess.
 
+## Git hooks
+
+Install the hooks once per clone (requires
+[prek](https://github.com/j178/prek) and
+[ripsecrets](https://github.com/sirwart/ripsecrets)):
+
+```console
+$ just hooks        # or: prek install --hook-type pre-commit --hook-type commit-msg
+```
+
+On every commit: secret scan (`ripsecrets --strict-ignore`), Cargo.lock
+consistency, `cargo fmt` (auto-restaged), clippy with `-D warnings`, and
+a commit-message check. `just hooks-run` exercises everything against
+the whole tree without committing.
+
 ## Commit style
 
-Imperative subject line, wrapped body; explain *why*, especially for
-security-relevant changes. Reference the issue or incident where
-applicable.
+Conventional commits (`type[(scope)]: subject`), enforced by the
+commit-msg hook:
+
+```text
+feat(broker): cap request line length
+fix(deploy): refuse symlinked store paths
+docs: expand capability inventory in the threat model
+```
+
+Types: `build chore ci docs feat fix perf refactor revert style test`.
+Wrap the body, explain *why* (especially for security-relevant changes),
+and reference the issue or incident where applicable.

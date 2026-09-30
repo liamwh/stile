@@ -1,0 +1,71 @@
+# Hooks for prek (https://github.com/j178/prek) or classic pre-commit.
+# Install once per clone:
+#   prek install --hook-type pre-commit --hook-type commit-msg
+# Run manually:
+#   prek run --all-files
+default_stages: [pre-commit]
+default_install_hook_types: [pre-commit]
+fail_fast: false
+
+repos:
+  - repo: local
+    hooks:
+      # ripsecrets: fast local secret detection (gitleaks remains the CI gate).
+      - id: ripsecrets
+        name: Scan for secrets
+        entry: ripsecrets --strict-ignore
+        language: system
+        pass_filenames: true
+        always_run: true
+        priority: 0
+
+      # Conventional commits (types mirror commitlint config-conventional).
+      - id: conventional-commit
+        name: Check commit message (conventional commits)
+        entry: scripts/hooks/commit-msg.sh
+        language: system
+        stages: [commit-msg]
+        always_run: true
+        pass_filenames: false
+
+      # Cargo.lock must stay consistent with Cargo.toml.
+      - id: check-cargo-lock
+        name: Check Cargo.lock is consistent
+        entry: >
+          bash -c '
+            if cargo metadata --locked --format-version 1 >/dev/null 2>&1; then
+              exit 0;
+            fi;
+            echo "Cargo.lock is out of sync with Cargo.toml";
+            echo "Fix: cargo generate-lockfile && git add Cargo.lock";
+            exit 1;
+          '
+        language: system
+        pass_filenames: false
+        files: '(^|/)Cargo\.toml$|(^|/)Cargo\.lock$'
+        priority: 5
+
+      # Auto-format staged Rust code and restage.
+      - id: format-rust
+        name: Format Rust code
+        entry: >
+          bash -c '
+            staged=$(git diff --cached --name-only --diff-filter=ACM | grep "\.rs$" || true);
+            if [ -n "$staged" ]; then
+              cargo fmt --all;
+              echo "$staged" | xargs -r git add;
+            fi
+          '
+        language: system
+        pass_filenames: false
+        files: '\.rs$'
+        priority: 5
+
+      # Lint with warnings denied (repo-local target dir, locked deps).
+      - id: clippy
+        name: Lint Rust code with clippy
+        entry: env CARGO_TARGET_DIR=target cargo clippy --all-targets --all-features --locked -- -D warnings
+        language: system
+        pass_filenames: false
+        files: '\.(rs|toml)$'
+        priority: 6
