@@ -1,0 +1,14 @@
+[package]
+name = "stile-protocol"
+description = "Wire protocol between stile and stile-brokerd. Contains no operation capable of returning secret material."
+edition.workspace = true
+version.workspace = true
+license.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+
+[lints]
+workspace = true

@@ -1,0 +1,35 @@
+# stile-brokerd daemon config — SYNTHETIC EXAMPLE.
+# Install root-owned at /etc/stile/brokerd.toml (mode 0600).
+
+# Unix socket path. Parent directory must be owned by the broker's user
+# and must not be world-writable; the broker verifies this at startup.
+socket_path = "/run/stile/sock"
+
+# Root-owned install of the registry declaration.
+registry_path = "/etc/stile/registry.toml"
+
+# Audit trail (JSONL; values are never recorded).
+audit_path = "/var/lib/stile/audit/audit.log"
+
+# Broker-private staging (created 0700). Verification header files live
+# here briefly and are unlinked immediately.
+work_dir = "/var/lib/stile/work"
+
+# Encrypted pre-rotation backups (created 0700, files 0400).
+backup_dir = "/var/lib/stile/backup"
+
+# External tools. Absolute paths; the broker never invokes a shell.
+sops_bin = "/usr/bin/sops"
+
+# Dedicated age identity for the broker (root-only, 0400). Its public
+# key must be a recipient in the SOPS creation rules covering every
+# store file in the registry.
+age_key_file = "/etc/stile/age.key"
+
+# Unix group permitted to connect. Members gain the ability to request
+# lifecycle operations — they still never receive secret values.
+access_group = "stile-access"
+
+# Extra UIDs allowed regardless of group membership (root is always
+# allowed).
+allowed_uids = []

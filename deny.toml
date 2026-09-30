@@ -1,0 +1,38 @@
+# cargo-deny configuration. Intentionally minimal: catch known-vulnerable
+# dependencies, unlicensed code, and unexpected crate sources. This is a
+# gate, not a compliance framework.
+
+[advisories]
+version = 2
+# Yanked versions are a warning, not a failure: a yanked release is not
+# necessarily vulnerable and Cargo.lock pins exact versions anyway.
+yanked = "warn"
+
+[licenses]
+version = 2
+# Everything in the tree must be permissive and GPL-free (this is
+# Apache-2.0 infrastructure software expected to be vendored).
+allow = [
+  "MIT",
+  "MIT-0",
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-3.0",
+  "Unicode-DFS-2016",
+  "CDLA-Permissive-2.0",
+]
+
+[bans]
+# Multiple major versions of a crate are noisy, not dangerous; duplicate
+# versions of the same major are worth seeing but not failing on.
+multiple-versions = "warn"
+wildcards = "allow"
+
+[sources]
+# Crates must come from crates.io (unknown registries and git
+# dependencies would be a supply-chain surprise).
+unknown-registry = "deny"
+unknown-git = "deny"

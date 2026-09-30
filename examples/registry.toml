@@ -1,0 +1,185 @@
+# stile registry — SYNTHETIC EXAMPLE, all values fake.
+#
+# Version-control this in your infrastructure repository and install it
+# root-owned at /etc/stile/registry.toml. It is re-read on every
+# request; it is the complete declaration of what the broker may do.
+#
+# Every hostname, path, user and service below is an example. Replace
+# them with your own. Never put secret VALUES here — only locations,
+# commands and expectations.
+
+version = 1
+repo_root = "/srv/infra"          # root of your SOPS-managed repository
+
+# ── an auto-rotatable secret ──────────────────────────────────────────
+[[secret]]
+id = "example-app/session-key"
+reason = "ordinary session signing key; rotation logs users out"
+policy = "auto"
+
+[secret.store]
+file = "secrets/example-app.env"   # relative to repo_root; must match a .sops.yaml creation rule
+type = "dotenv"
+key = "SESSION_KEY"
+
+[secret.generation]
+type = "hex"
+bytes = 32
+
+# Runtime consumer: one key inside the app's deployed env file.
+[[secret.consumers]]
+type = "dotenv-file"
+path = "/etc/example-app/env"
+key = "SESSION_KEY"
+owner = "example-app"             # deployed file is chowned to this user
+mode = 256                         # 0o400 as a TOML integer
+
+# After files change, restart the service (declared command, declared user).
+[[secret.reload]]
+type = "run-command"
+user = "example-app"
+command = "/usr/bin/systemctl"
+args = ["restart", "example-app.service"]
+
+# End-to-end check that the service is alive after restart.
+[[secret.verify]]
+type = "http-status"
+url = "https://example-app.internal.test/healthz"
+expect_status = 200
+
+# ── a provider-assisted secret (value comes from the provider) ───────
+[[secret]]
+id = "example-app/oauth-client-secret"
+policy = "provider-assisted"
+human_step = "reset the client secret in the example-provider console, then paste it here"
+reason = "provider issues the value; no safe local generation"
+
+[secret.store]
+file = "secrets/example-app.env"
+type = "dotenv"
+key = "OAUTH_CLIENT_SECRET"
+
+[[secret.consumers]]
+type = "dotenv-file"
+path = "/etc/example-app/env"
+key = "OAUTH_CLIENT_SECRET"
+owner = "example-app"
+mode = 256
+
+[[secret.reload]]
+type = "run-command"
+user = "example-app"
+command = "/usr/bin/systemctl"
+args = ["restart", "example-app.service"]
+
+[[secret.verify]]
+type = "http-status"
+url = "https://example-app.internal.test/healthz"
+expect_status = 200
+
+# ── an auto-rotatable API key with backends and revocation probe ─────
+[[secret]]
+id = "example-app/inference-api-key"
+policy = "auto"
+
+[secret.store]
+file = "secrets/inference.key"     # whole-file binary secret
+type = "binary"
+
+[secret.generation]
+type = "urlsafe"
+bytes = 32
+
+[[secret.consumers]]
+type = "raw-file"
+path = "/etc/inference-gateway/api.key"
+owner = "inference"
+mode = 256
+
+# Two mutually exclusive inference servers; exactly one is active.
+[[secret.backends]]
+id = "primary"
+[secret.backends.active]
+type = "run-command"
+user = "inference"
+command = "/usr/local/bin/inference-active"
+args = ["primary"]
+[secret.backends.reload]
+type = "run-command"
+user = "inference"
+command = "/usr/local/bin/inference-reload"
+args = ["primary"]
+[secret.backends.verify]
+type = "bearer-probe"
+url = "https://inference-primary.internal.test/v1/models"
+expect_status = 200
+old_expect_status = 401            # the OLD key must now be rejected
+
+[[secret.backends]]
+id = "fallback"
+[secret.backends.active]
+type = "run-command"
+user = "inference"
+command = "/usr/local/bin/inference-active"
+args = ["fallback"]
+[secret.backends.reload]
+type = "run-command"
+user = "inference"
+command = "/usr/local/bin/inference-reload"
+args = ["fallback"]
+[secret.backends.verify]
+type = "bearer-probe"
+url = "https://inference-fallback.internal.test/v1/models"
+expect_status = 200
+old_expect_status = 401
+
+# ── a database role password (pre-reload hook) ───────────────────────
+[[secret]]
+id = "example-app/db-password"
+policy = "auto"
+
+[secret.store]
+file = "secrets/example-app.env"
+type = "dotenv"
+key = "DB_PASSWORD"
+
+[secret.generation]
+type = "hex"
+bytes = 24
+
+# ALTER ROLE ... PASSWORD ... runs inside the declared container, SQL on
+# stdin only — the password never appears in any command line.
+[[secret.pre_reload]]
+type = "postgres-role-password"
+container = "example-app-db-1"
+role = "example_app"
+
+[[secret.consumers]]
+type = "dotenv-file"
+path = "/etc/example-app/env"
+key = "DB_PASSWORD"
+owner = "example-app"
+mode = 256
+
+[[secret.reload]]
+type = "run-command"
+user = "example-app"
+command = "/usr/bin/systemctl"
+args = ["restart", "example-app.service"]
+
+[[secret.checks]]
+id = "app-connects-to-db"
+[secret.checks.command]
+type = "run-command"
+user = "example-app"
+command = "/usr/local/bin/example-app-db-check"
+
+# ── a forbidden rotation (data-encryption key) ───────────────────────
+[[secret]]
+id = "example-app/email-encryption-key"
+policy = "forbidden"
+reason = "rotating would make stored email undecryptable; requires a migration"
+[secret.store]
+file = "secrets/example-app.env"
+type = "dotenv"
+key = "EMAIL_ENCRYPT_KEY"
