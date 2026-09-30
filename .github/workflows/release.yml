@@ -33,10 +33,12 @@ jobs:
           targets: ${{ matrix.target }}
       - name: Install cross
         if: matrix.use-cross
-        run: cargo install --locked cross
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.44.61
+        with:
+          tool: cross
       - name: Build release binaries
         run: |
-          cargo cross build --release --locked --target ${{ matrix.target }} \
+          cross build --release --locked --target ${{ matrix.target }} \
             -p stile -p stile-brokerd
       - name: Package
         run: |
