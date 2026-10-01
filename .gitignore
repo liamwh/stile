@@ -2,3 +2,7 @@
 *.swp
 *.sops.bak
 .env
+
+# nix build outputs
+/result
+/result-*
