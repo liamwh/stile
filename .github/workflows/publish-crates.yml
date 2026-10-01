@@ -1,0 +1,44 @@
+name: publish-crates
+
+# Publishes the workspace crates to crates.io in dependency order.
+# Idempotent: versions already on crates.io are skipped, so re-running
+# after a partial failure is safe. Nothing here publishes to any other
+# registry; GitHub releases are built by release.yml.
+
+on:
+  workflow_dispatch:
+  release:
+    types: [released]
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  publish:
+    if: github.repository == 'liamwh/stile'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+      - name: Publish (dependency order, skip existing)
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+        run: |
+          set -euo pipefail
+          version="$(awk -F'"' '/^version = /{print $2; exit}' Cargo.toml)"
+          for crate in stile-protocol stile-core stile-brokerd stile; do
+            code="$(curl -s -o /dev/null -w '%{http_code}' \
+              -H 'User-Agent: liamwh-stile-ci' \
+              "https://crates.io/api/v1/crates/$crate/$version")"
+            if [ "$code" = "200" ]; then
+              echo "$crate $version already on crates.io; skipping"
+              continue
+            fi
+            echo "::group::cargo publish -p $crate"
+            cargo publish --locked -p "$crate"
+            echo "::endgroup::"
+          done

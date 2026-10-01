@@ -1,0 +1,71 @@
+name: packages
+
+# Linux distribution packages (.deb for amd64/arm64) attached to an
+# existing release. Manual trigger only: choose the release tag, the
+# workflow builds static musl binaries and debs, then uploads them to
+# that release. Nothing publishes to an apt repository.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach packages to (e.g. v0.1.0)"
+        required: true
+      version:
+        description: "Package version (defaults to the tag without v)"
+        required: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  deb:
+    if: github.repository == 'liamwh/stile'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-musl
+            arch: amd64
+          - target: aarch64-unknown-linux-musl
+            arch: arm64
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.2.2
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          targets: ${{ matrix.target }}
+      - name: Install cross
+        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.44.61
+        with:
+          tool: cross
+      - name: Build static binaries
+        run: |
+          cross build --release --locked --target ${{ matrix.target }} \
+            -p stile -p stile-brokerd
+      - name: Build .deb
+        run: |
+          version="${{ github.event.inputs.version }}"
+          [ -n "$version" ] || version="${{ github.event.inputs.tag }}"
+          version="${version#v}"
+          scripts/make-deb.sh \
+            "target/${{ matrix.target }}/release" \
+            "dist/stile_${version}_${{ matrix.arch }}.deb" \
+            "${{ matrix.arch }}" "$version"
+      - name: Attach to release
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.2.2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          files: dist/*.deb
+      - name: Refresh checksums
+        run: |
+          tag="${{ github.event.inputs.tag }}"
+          gh release download "$tag" --dir dist --clobber \
+            --pattern '*.tar.gz' --pattern 'SHASUMS256.txt' || true
+          (cd dist && { [ -f SHASUMS256.txt ] && grep -v '\.deb' SHASUMS256.txt || true; } > SHASUMS256.new; sha256sum ./*.tar.gz ./*.deb >> SHASUMS256.new; mv SHASUMS256.new SHASUMS256.txt)
+          gh release upload "$tag" dist/SHASUMS256.txt --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -10,7 +10,7 @@ name = "stile"
 path = "src/main.rs"
 
 [dependencies]
-stile-protocol = { path = "../stile-protocol" }
+stile-protocol = { workspace = true }
 serde_json = { workspace = true }
 clap = { workspace = true }
 libc = { workspace = true }

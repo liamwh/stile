@@ -15,6 +15,10 @@ license = "Apache-2.0"
 repository = "https://github.com/liamwh/stile"
 
 [workspace.dependencies]
+# Internal crates carry both path (workspace builds) and version
+# (crates.io publishes) so `cargo publish` can rewrite them.
+stile-protocol = { path = "crates/stile-protocol", version = "0.1.0" }
+stile-core = { path = "crates/stile-core", version = "0.1.0" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"

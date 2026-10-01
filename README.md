@@ -95,6 +95,29 @@ print a secret value. There is deliberately no `get`, `show`, `reveal`,
 
 ## Installation
 
+Linux only (x86_64/aarch64). Static musl binaries are attached to each
+[GitHub release](https://github.com/liamwh/stile/releases) — verify
+against `SHASUMS256.txt`.
+
+Package managers:
+
+```console
+# crates.io (CLI crate; the daemon builds from the same workspace)
+$ cargo install stile --locked
+$ cargo install stile-brokerd --locked
+
+# Nix (flake in this repository; also usable pinned to a tag)
+$ nix profile install github:liamwh/stile
+$ nix run github:liamwh/stile -- list
+
+# Homebrew (Linux)
+$ brew tap liamwh/stile https://github.com/liamwh/homebrew-stile
+$ brew install stile
+
+# Debian/Ubuntu: stile_<version>_<arch>.deb from the releases page
+$ sudo dpkg -i stile_0.1.0_amd64.deb
+```
+
 From source (Rust 1.85+):
 
 ```console
@@ -103,9 +126,6 @@ $ cd stile
 $ cargo build --release --locked
 # binaries: target/release/stile target/release/stile-brokerd
 ```
-
-Or download a prebuilt binary from the GitHub releases page (Linux
-x86_64/aarch64). Verify the checksum in `SHASUMS256.txt`.
 
 ## Setup
 
