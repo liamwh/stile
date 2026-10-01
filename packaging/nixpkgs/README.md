@@ -1,52 +1,47 @@
 # Submitting stile to nixpkgs
 
-The repository ships a [flake](../../flake.nix) (`nix profile install
-github:liamwh/stile`), which works today. Shipping in nixpkgs itself
-additionally gives stile to every NixOS user and enables it inside NixOS
-configurations directly. This directory holds the package expression
-ready to submit.
+Two layers exist upstream and they intentionally ship separately:
 
-## Steps
+- **the flake** (`../../flake.nix`): packages for both binaries, an
+  overlay, the NixOS module (`nix/module.nix`) and checks including a
+  VM test. This is the supported user-facing surface today and works
+  with no nixpkgs inclusion.
+- **nixpkgs**: contributes just the *package* initially. The NixOS
+  module stays upstream until stile has real users depending on it
+  (nixpkgs review friction for new service modules is high, and the
+  module's `extraReadWritePaths`-style interface may still evolve
+  before 1.0). Revisit once there is demand.
 
-1. Fork/clone nixpkgs, create a branch.
+## Steps (package only)
+
+1. Fork/clone nixpkgs; branch.
 2. Add this file as `pkgs/by-name/st/stile/package.nix`
-   (the by-name scheme needs no all-packages edit).
-3. In that directory, copy `Cargo.lock` next to `package.nix`
-   (`src = lib.cleanSource ./.` + `cargoLock.lockFile` expect the lock
-   from the same release tag):
+   (by-name needs no all-packages edit).
+3. Copy the release's `Cargo.lock` next to it and fill the fetch hash:
 
    ```console
-   $ curl -LO https://github.com/liamwh/stile/raw/v0.1.0/Cargo.lock
+   $ curl -L -o Cargo.lock \
+       https://github.com/liamwh/stile/raw/v<VERSION>/Cargo.lock
+   $ nix-build -A stile   # first run reports the correct src hash; paste it
    ```
 
-   and adjust `src` to the release tarball instead:
-
-   ```nix
-   src = fetchFromGitHub {
-     owner = "liamwh";
-     repo = "stile";
-     tag = "v${version}";
-     hash = ""; # let nix fill this in on the first build
-   };
-   ```
-
-4. Build and test:
+4. Bump `version`, `tag` and `hash` together on updates.
+5. Register as a maintainer in `maintainers/maintainer-list.nix` and add
+   your handle to `meta.maintainers`.
+6. Verify with:
 
    ```console
-   $ nix-build -A stile
-   $ ./result/bin/stile --version
-   ```
-
-5. Add yourself (or leave empty initially) to `meta.maintainers` with
-   your `lib.maintainers` handle after registering in
-   `maintainers/maintainer-list.nix`.
-6. Open a PR titled `stile: init at 0.1.0` against
-   `NixOS/nixpkgs:master`, mentioning `meta.mainProgram` is set. Nixpkgs
-   review generally asks for `nixpkgs-review` output — run:
-
-   ```console
+   $ nix-build -A stile && ./result/bin/stile --version
    $ nix-shell -p nixpkgs-review --run "nixpkgs-review rev HEAD"
    ```
 
-After merge, updates ride the normal ofBorg/r-ryantm automation keyed
-off the GitHub releases.
+7. PR titled `stile: init at <VERSION>` against `NixOS/nixpkgs:master`.
+
+## Module (later, optional)
+
+When the module is ready to move, it imports almost verbatim: take
+`nix/module.nix`, replace the store-path `ExecStart` config reference
+with nixpkgs' `settingsFormat` (`pkgs.formats.toml`), keep the
+`types.str` (never `types.path`) registry/age options so secret-bearing
+files cannot leak into the store, and add a VM test derived from
+`nix/test.nix`.

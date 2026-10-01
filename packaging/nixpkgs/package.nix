@@ -1,21 +1,30 @@
 {
   lib,
   rustPlatform,
+  fetchFromGitHub,
 }:
 rustPlatform.buildRustPackage {
   pname = "stile";
   version = "0.1.0";
 
-  src = lib.cleanSource ./.;
+  src = fetchFromGitHub {
+    owner = "liamwh";
+    repo = "stile";
+    tag = "v${version}";
+    hash = "";
+  };
 
   cargoLock.lockFile = ./Cargo.lock;
 
+  # Virtual workspace: build every member, ship both binaries.
   cargoBuildFlags = [ "--workspace" ];
 
   # The full suite needs cargo-nextest plus spawnable fake tools at
   # repo-local paths; upstream CI covers it.
   doCheck = false;
 
+  # cargoBuildHook builds with an explicit --target, so binaries land
+  # in target/<triple>/release, not target/release.
   postInstall = ''
     for f in stile stile-brokerd; do
       bin="$(find target -type f -executable -name "$f" -path '*/release/*' ! -path '*/deps/*' | head -n1)"

@@ -1,7 +1,21 @@
-# stile-brokerd systemd unit — EXAMPLE.
+# stile-brokerd systemd unit — EXAMPLE for MANUAL deployments.
+#
+# Three unit variants exist; they share identical hardening and differ
+# only in paths and writable mounts:
+#   - this file (manual): /usr/local/bin, ReadWritePaths tailored by hand;
+#   - the .deb: /usr/bin, ReadWritePaths=/var/lib/stile /run/stile, add
+#     a drop-in for your SOPS repo/consumers (see paths.conf in the
+#     package docs);
+#   - the NixOS module (nix/module.nix): store paths, ReadWritePaths
+#     from services.stile.extraReadWritePaths.
+#
 # The broker needs root to: chown deployed files to their declared
 # owners, run declared commands as declared users (runuser), and read
 # the root-owned age identity. Everything else is restricted below.
+#
+# NoNewPrivileges is deliberately NOT set (see the comment in [Service])
+# because runuser must keep CAP_SETUID to drop privileges to the users
+# declared in the registry.
 #
 # ADAPT the ReadWritePaths to your registry's consumers and repo_root;
 # the paths here match examples/registry.toml with repo_root=/srv/infra.

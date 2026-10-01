@@ -93,75 +93,157 @@ The unprivileged CLI (`stile`) has no code path that can receive or
 print a secret value. There is deliberately no `get`, `show`, `reveal`,
 `exec` or `export` command.
 
-## Installation
+## Installing stile
 
-Linux only (x86_64/aarch64). Static musl binaries are attached to each
-[GitHub release](https://github.com/liamwh/stile/releases) — verify
-against `SHASUMS256.txt`.
+Stile is **a privileged Linux service plus an unprivileged client**, not
+a standalone CLI. A working deployment has four parts: the `stile`
+client, the `stile-brokerd` system service, root-owned configuration
+(the registry and the SOPS age identity), and an access group whose
+members may call the broker. The channels below differ in how much of
+that they assemble for you; the **broker configuration** steps at the
+end are always yours.
 
-Package managers:
+Linux only, x86_64/aarch64.
+
+### NixOS (recommended on NixOS hosts)
+
+The repository ships a NixOS module that manages the service, the
+`stile-access` group, runtime/state directories, the hardened unit and a
+generated broker config:
+
+```nix
+{
+  inputs.stile.url = "github:liamwh/stile";
+
+  # in your NixOS configuration:
+  imports = [ inputs.stile.nixosModules.stile ];
+
+  services.stile = {
+    enable = true;
+    # optional overrides: accessGroup, socketPath, stateDir, sopsPackage,
+    # extraReadWritePaths (SOPS repo root + consumer dirs)
+  };
+}
+```
+
+Or without flakes: add the channel, then
+`imports = [ <stile>/nix/module.nix ];` and set
+`services.stile.package`. The module **never** provisions the registry
+or the age identity — continue with *Broker configuration* below.
+
+Non-NixOS Nix users:
 
 ```console
-# crates.io (CLI crate; the daemon builds from the same workspace)
-$ cargo install stile --locked
-$ cargo install stile-brokerd --locked
-
-# Nix (flake in this repository; also usable pinned to a tag)
-$ nix profile install github:liamwh/stile
+$ nix profile install github:liamwh/stile    # both binaries
 $ nix run github:liamwh/stile -- list
-
-# Homebrew (Linux)
-$ brew tap liamwh/stile https://github.com/liamwh/homebrew-stile
-$ brew install stile
-
-# Debian/Ubuntu: stile_<version>_<arch>.deb from the releases page
-$ sudo dpkg -i stile_0.1.0_amd64.deb
 ```
 
-From source (Rust 1.85+):
+(this installs binaries only; the system integration is not managed).
+
+### Debian / Ubuntu (recommended on conventional hosts)
+
+Each release ships `stile_<version>_<arch>.deb` — a real system
+package, not just binaries:
 
 ```console
-$ git clone https://github.com/liamwh/stile
-$ cd stile
-$ cargo build --release --locked
-# binaries: target/release/stile target/release/stile-brokerd
+$ sudo apt install ./stile_0.1.1_amd64.deb
 ```
 
-## Setup
+That installs `/usr/bin/stile` and `/usr/bin/stile-brokerd`, the
+hardened systemd unit, the `stile-access` group (via systemd-sysusers)
+and state directories (via systemd-tmpfiles). The service is installed
+**but not enabled**: it cannot work until you provide the registry and
+the age identity, so the package refuses to pretend otherwise. Continue
+with *Broker configuration* below.
 
-`stile` targets a single Linux host where secrets are already managed
-with [SOPS](https://github.com/getsops/sops) (age-encrypted) inside a
-git-tracked repository.
+### Manual / from GitHub Releases (canonical artefacts)
 
-1. **Group** — create the access group; members may call lifecycle
-   operations (they still never see values):
+[GitHub Releases](https://github.com/liamwh/stile/releases) carry the
+static musl binaries, `SHASUMS256.txt` and the `.deb`s — the source for
+every other channel. For a manual deployment:
 
-   ```console
-   # groupadd --system stile-access
-   # usermod -aG stile-access <agent-user>
-   ```
+```console
+$ curl -LO https://github.com/liamwh/stile/releases/download/v0.1.0/stile-v0.1.0-x86_64-unknown-linux-musl.tar.gz
+$ sha256sum stile-v0.1.0-x86_64-unknown-linux-musl.tar.gz   # check SHASUMS256.txt
+$ tar xzf stile-v0.1.0-*.tar.gz
+# install -m755 stile-v0.1.0-*/stile stile-v0.1.0-*/stile-brokerd /usr/local/bin/
+# usermod... see below
+```
 
-2. **Broker identity** — a dedicated SOPS age identity, root-owned:
+Copying the two binaries alone is **not** a stile deployment. Complete
+steps:
 
-   ```console
-   # age-keygen -o /etc/stile/age.key        # chmod 0400, add the public key to .sops.yaml
-   ```
+```console
+# 1. group whose members may call the broker
+# groupadd --system stile-access
+# usermod -aG stile-access <agent-user>
 
-3. **Registry** — declare your secrets at
-   `/etc/stile/registry.toml` (root-owned). See
+# 2. broker's SOPS age identity (root-only; public key joins .sops.yaml)
+# age-keygen -o /etc/stile/age.key
+# chmod 0400 /etc/stile/age.key
+
+# 3. registry and daemon config (root-owned)
+# install -m750 -d /etc/stile
+# install -m640 examples/registry.toml /etc/stile/registry.toml   # then edit it
+# install -m640 examples/brokerd.toml /etc/stile/brokerd.toml
+
+# 4. systemd unit (adjust ReadWritePaths to your repo_root/consumers)
+# install -m644 examples/stile-brokerd.service /etc/systemd/system/
+# systemctl daemon-reload
+# systemctl enable --now stile-brokerd
+
+# 5. verify the boundary
+$ stat -c '%a %U:%G %n' /run/stile/sock        # 660 root:stile-access
+$ stile list                                    # from a member of stile-access
+```
+
+### Cargo (development / custom deployments)
+
+The crates are published for Rust developers:
+
+```console
+$ cargo install stile --locked          # unprivileged client only
+$ cargo install stile-brokerd --locked  # the daemon binary
+```
+
+`cargo install` places **binaries only**. It does not create the
+systemd service, `/etc/stile`, runtime directories, the `stile-access`
+group, socket ownership, a SOPS age identity, the registry, or any
+service lifecycle — assembling those is what the NixOS module and the
+`.deb` do. Use cargo for development, experimentation, unusual
+deployment targets, or when you deliberately want to manage the system
+integration yourself.
+
+### Linuxbrew (developer convenience)
+
+`brew install liamwh/stile/stile` on Linux installs the two binaries —
+no service integration. Treat it as a client/development convenience,
+not a deployment; macOS is not supported.
+
+## Broker configuration (all installation methods)
+
+Whichever channel you used, these remain the administrator's job — no
+packaging may invent them:
+
+1. **SOPS repository** — stile expects a git-tracked SOPS store
+   (age-encrypted). The broker's age public key must be a recipient for
+   the store files (`.sops.yaml`).
+2. **Registry** — `/etc/stile/registry.toml`, root-owned: every secret,
+   consumer, reload command and verification probe. See
    [examples/registry.toml](examples/registry.toml) and
    [docs/registry.md](docs/registry.md).
+3. **Age identity** — `/etc/stile/age.key` (`0400`, root): the broker's
+   decryption identity. Generate it with `age-keygen`; never commit it.
+4. **Access group membership** — `usermod -aG stile-access <user>` for
+   every agent user. Members may *request lifecycle operations*; they
+   still never receive secret values.
+5. **Enable and verify** — `systemctl enable --now stile-brokerd`, then
+   `stat -c '%a %U:%G %n' /run/stile/sock` must show
+   `660 root:stile-access`, and `stile list` must work from a member
+   user and fail for a non-member.
 
-4. **Daemon config** — `/etc/stile/brokerd.toml` (root-owned). See
-   [examples/brokerd.toml](examples/brokerd.toml).
-
-5. **Service** — install the hardened systemd unit from
-   [examples/stile-brokerd.service](examples/stile-brokerd.service):
-
-   ```console
-   # cp examples/stile-brokerd.service /etc/systemd/system/
-   # systemctl enable --now stile-brokerd
-   ```
+The NixOS module and the `.deb` stop exactly at this line: they create
+the *machinery*, you provide the *authority*.
 
 ## Example use
 
