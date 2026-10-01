@@ -51,6 +51,7 @@ jobs:
           version="${{ github.event.inputs.version }}"
           [ -n "$version" ] || version="${{ github.event.inputs.tag }}"
           version="${version#v}"
+          mkdir -p dist
           scripts/make-deb.sh \
             "target/${{ matrix.target }}/release" \
             "dist/stile_${version}_${{ matrix.arch }}.deb" \
