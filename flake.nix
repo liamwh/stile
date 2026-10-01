@@ -32,8 +32,13 @@
             # at repo-local paths; CI covers it. Build only here.
             doCheck = false;
 
+            # cargoBuildHook builds with an explicit --target, so
+            # binaries land in target/<triple>/release, not target/release.
             postInstall = ''
-              install -Dm755 target/release/stile-brokerd $out/bin/stile-brokerd
+              for f in stile stile-brokerd; do
+                bin="$(find target -type f -executable -name "$f" -path '*/release/*' ! -path '*/deps/*' | head -n1)"
+                install -Dm755 "$bin" "$out/bin/$f"
+              done
             '';
 
             meta = with pkgs.lib; {
