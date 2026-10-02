@@ -31,6 +31,7 @@ cp_deb() { docker cp "$abs_deb" "$CID:/tmp/stile.deb"; }
 cp_deb
 
 fail() { echo "FAIL: $*" >&2; exit 1; }
+pkg_version=$(dpkg-deb --info "$abs_deb" | awk '/^ Version:/ {print $2}')
 
 # Cross-arch (e.g. arm64 deb on an amd64 runner): structural verification
 # only — dpkg-deb inspects the archive; lifecycle tests need a native arch
@@ -62,7 +63,7 @@ dc "stat -c %a /etc/stile/brokerd.toml | grep -qx 640" || fail "conffile mode 64
 dc "stat -c %a /usr/bin/stile | grep -qx 755" || fail "binary mode"
 
 echo "== 3. binaries run =="
-dc "/usr/bin/stile --version" | grep -q "stile 0.1.0" || fail "CLI version"
+dc "/usr/bin/stile --version" | grep -q "stile $pkg_version" || fail "CLI version"
 dc "/usr/bin/stile-brokerd --help" >/dev/null || fail "brokerd help"
 
 echo "== 4. sysusers + tmpfiles =="
