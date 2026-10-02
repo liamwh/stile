@@ -5,7 +5,7 @@ Notable changes to `stile`. The format follows
 is semver-ish for a pre-1.0 project: breaking changes may land in minor
 versions.
 
-## [Unreleased]
+## [0.1.1] — 2026-10-02
 
 - Rotations and provider imports refused by registry policy (for
   example a `forbidden` data-encryption key) are now written to the

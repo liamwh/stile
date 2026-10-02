@@ -290,7 +290,7 @@ dependencies = [
 
 [[package]]
 name = "stile"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "clap",
  "libc",
@@ -300,7 +300,7 @@ dependencies = [
 
 [[package]]
 name = "stile-brokerd"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "serde",
@@ -313,7 +313,7 @@ dependencies = [
 
 [[package]]
 name = "stile-core"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "rand",
@@ -326,7 +326,7 @@ dependencies = [
 
 [[package]]
 name = "stile-integration"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "libc",
  "serde",
@@ -337,7 +337,7 @@ dependencies = [
 
 [[package]]
 name = "stile-protocol"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "serde",
  "serde_json",
