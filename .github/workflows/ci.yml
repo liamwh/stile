@@ -41,7 +41,7 @@ jobs:
       - run: CARGO_TARGET_DIR=target cargo build --all-targets --locked
       - run: CARGO_TARGET_DIR=target cargo build --release --locked -p stile -p stile-brokerd
       - name: Install nextest
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.44.61
+        uses: taiki-e/install-action@e407f7bafb71fd004bc5c2da3032e5470cbb6ef0 # v2.44.61
         with:
           tool: cargo-nextest
       - name: "Run tests (nextest: process-per-test, so env-override tests are isolated)"
