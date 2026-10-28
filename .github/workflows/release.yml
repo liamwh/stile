@@ -30,7 +30,7 @@ jobs:
         with:
           targets: ${{ matrix.target }}
       - name: Install cross
-        uses: taiki-e/install-action@83ac0ad63c0167e6f06796fab0fce28db1bf3db0 # v2.44.61
+        uses: taiki-e/install-action@1e29709c0ec63babbe8f266397a465f29a825f91 # v2.44.61
         with:
           tool: cross
       - name: Build release binaries
@@ -59,7 +59,7 @@ jobs:
           # amd64 runs the full lifecycle test on the native container;
           # arm64 (cross-arch on the runner) runs structural checks.
           bash scripts/test-deb.sh "dist/stile_${version}_${arch}.deb"
-      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ${{ matrix.target }}
           path: dist/*
@@ -70,7 +70,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v4.2.2
-      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v4.1.8
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v4.1.8
         with:
           path: dist
           merge-multiple: true
